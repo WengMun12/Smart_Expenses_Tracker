@@ -1,6 +1,8 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
 import '../../config.dart';
 import 'add_expense_page.dart';
 
@@ -44,6 +46,27 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() => _loading = false);
   }
 
+  Future<void> _deleteExpense(int id) async {
+    try {
+      final res = await http.delete(
+        Uri.parse('$baseUrl/expenses/$id'),
+        headers: {'Authorization': 'Bearer ${widget.token}'},
+      );
+      if (res.statusCode != 200 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Delete failed (${res.statusCode}')),
+        );
+        _loadExpenses();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
+        _loadExpenses();
+      }
+    }
+  }
+
   Widget _buildBody() {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return Center(child: Text(_error!));
@@ -55,10 +78,25 @@ class _HomePageState extends State<HomePage> {
         itemCount: _expenses.length,
         itemBuilder: (context, i) {
           final e = _expenses[i];
-          return ListTile(
-            title: Text(e['description'] ?? '(no description)'),
-            subtitle: Text('${e['sdate']}'),
-            trailing: Text('RM ${e['amount']}'),
+          return Dismissible(
+            key: ValueKey(e['expensesID']),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              color: Colors.red,
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              child: const Icon(Icons.delete, color: Colors.white),
+            ),
+            onDismissed: (_) {
+              final id = e['expensesID'];
+              setState(() => _expenses.removeAt(i));
+              _deleteExpense(id);
+            },
+            child: ListTile(
+              title: Text(e['description'] ?? '(no description'),
+              subtitle: Text('${e['sdate']}'),
+              trailing: Text('RM ${e['amount']}'),
+            ),
           );
         },
       ),
