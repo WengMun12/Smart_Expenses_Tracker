@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../config.dart';
+import 'add_expense_page.dart';
 
 class HomePage extends StatefulWidget {
   final String token;
@@ -70,8 +71,14 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(title: const Text('My Expenses')),
       body: _buildBody(),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-
+        onPressed: () async {
+          final added = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AddExpensePage(token: widget.token),
+            ),
+          );
+          if (added == true) _loadExpenses();
         },
         child: const Icon(Icons.add),
       ),
