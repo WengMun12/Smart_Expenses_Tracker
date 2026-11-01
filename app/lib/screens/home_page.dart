@@ -81,6 +81,27 @@ class _HomePageState extends State<HomePage> {
           return Dismissible(
             key: ValueKey(e['expensesID']),
             direction: DismissDirection.endToStart,
+            confirmDismiss: (direction) async {
+              return await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Delete expense?'),
+                  content: Text(
+                    'Delete "${e['description'] ?? 'this expense'}" (RM ${e['amount']})?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Delete', style: TextStyle(color: Colors.red),),
+                    ),
+                  ],
+                ),
+              );
+            },
             background: Container(
               color: Colors.red,
               alignment: Alignment.centerRight,
