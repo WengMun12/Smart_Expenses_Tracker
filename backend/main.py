@@ -7,6 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import date
 from typing import Optional
 from dotenv import load_dotenv
+from fastapi.encoders import jsonable_encoder
 import jwt
 import bcrypt
 import os
@@ -76,6 +77,15 @@ def add_expenses(e: ExpenseIn, user_id: int = Depends(get_current_user)):
             {"u": user_id, "c": e.categoryID, "a": e.amount, "d": e.description, "dt": e.date},
         )
     return {"message": "Expense added"}
+
+@app.get("/expenses")
+def list_expenses(user_id: int = Depends(get_current_user)):
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT * FROM expenses WHERE userID = :u ORDER BY sdate DESC"),
+            {"u": user_id},
+        ).mappings().all()
+    return jsonable_encoder([dict(r) for r in rows])
 
 @app.put("/expenses/{expense_id}")
 def update_expense(expense_id: int, e: ExpenseIn, user_id: int = Depends(get_current_user)):
