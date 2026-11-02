@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../config.dart';
 import 'home_page.dart';
+import 'signup_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -79,6 +80,13 @@ class _LoginPageState extends State<LoginPage> {
                   width: 18,
                   child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text('Login'),
+            ),
+            TextButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SignupPage()),
+                ),
+                child: const Text("Don't have an account? Sign up"),
             ),
           ],
         ),

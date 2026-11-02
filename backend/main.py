@@ -24,6 +24,8 @@ class UserIn(BaseModel):
 
 @app.post("/signup")
 def signup(user: UserIn):
+    if len(user.password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters")
     hashed = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt()).decode()
     with engine.begin() as conn:
         try: 
