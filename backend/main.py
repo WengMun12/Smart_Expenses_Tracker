@@ -13,6 +13,7 @@ import json
 import jwt
 import bcrypt
 import os
+import time
 
 engine = create_engine("mysql+pymysql://root:@localhost/expense_tracker")
 app = FastAPI()
@@ -123,15 +124,21 @@ def ai_category(body: AIIn, user_id: int = Depends(get_current_user)):
         "Reply with ONLY JSON, no extra words, in this form: "
         '{"amount": number, "description": "short text", "category": "Food|Transport|Shopping|Bills|Savings|Others"}'
     )
-    try:
-        res = gemini.models.generate_content(
-            model="gemini-3.8-flash", contents=prompt
-        )
-        clean = res.text.replace("'''json", "").replace("'''", "").strip()
-        data = json.loads(clean)
-    except Exception as ex:
-        print("AI ERROR:", repr(ex))
-        raise HTTPException(502, "AI request failed")
+    last_error = None
+    for attempt in range(3):
+        try:
+            res = gemini.models.generate_content(
+                model="gemini-3.8-flash", contents=prompt
+            )
+            clean = res.text.replace("'''json", "").replace("'''", "").strip()
+            data = json.loads(clean)
+            break
+        except Exception as ex:
+            last_error = exec
+            print("AI ERROR:", repr(ex))
+            time.sleep(2)
+    else:
+        raise HTTPException(502, "AI is busy, please try again")
 
     with engine.connect() as conn:
         row = conn.execute(
