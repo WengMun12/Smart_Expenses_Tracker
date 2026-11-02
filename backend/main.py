@@ -8,6 +8,8 @@ from datetime import date
 from typing import Optional
 from dotenv import load_dotenv
 from fastapi.encoders import jsonable_encoder
+from google import genai
+import json
 import jwt
 import bcrypt
 import os
@@ -33,6 +35,8 @@ def signup(user: UserIn):
     return {"message": "User created"}
 
 load_dotenv()
+gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 security = HTTPBearer()
@@ -108,6 +112,33 @@ def delete_expense(expense_id: int, user_id: int = Depends(get_current_user)):
     if result.rowcount == 0:
         raise HTTPException(404, "Expense not found")
     return {"message": "Expense deleted"}
+
+class AIIn(BaseModel):
+    text: str
+
+@app.post("/ai/categorize")
+def ai_category(body: AIIn, user_id: int = Depends(get_current_user)):
+    prompt = (
+        "Extract expense details from this text: " + body.text + "\n"
+        "Reply with ONLY JSON, no extra words, in this form: "
+        '{"amount": number, "description": "short text", "category": "Food|Transport|Shopping|Bills|Savings|Others"}'
+    )
+    try:
+        res = gemini.models.generate_content(
+            model="gemini-3.8-flash", contents=prompt
+        )
+        clean = res.text.replace("'''json", "").replace("'''", "").strip()
+        data = json.loads(clean)
+    except Exception as ex:
+        print("AI ERROR:", repr(ex))
+        raise HTTPException(502, "AI request failed")
+
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT categoryID FROM category WHERE categoryName = :n"), {"n": data.get("category")},
+        ).fetchone()
+    data["categoryID"] = row.categoryID if row else None
+    return data
 
 @app.get("/category")
 def list_category():
