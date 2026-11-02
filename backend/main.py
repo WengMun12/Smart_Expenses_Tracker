@@ -37,7 +37,7 @@ def signup(user: UserIn):
 
 load_dotenv()
 gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+MODELS = ["gemini-3.5-flash-lite", "gemini-3.8-flash"]
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 security = HTTPBearer()
@@ -126,10 +126,9 @@ def ai_category(body: AIIn, user_id: int = Depends(get_current_user)):
     )
     last_error = None
     for attempt in range(3):
+        model = MODELS[attempt % len(MODELS)]
         try:
-            res = gemini.models.generate_content(
-                model="gemini-3.8-flash", contents=prompt
-            )
+            res = gemini.models.generate_content(model=model, contents=prompt)
             clean = res.text.replace("'''json", "").replace("'''", "").strip()
             data = json.loads(clean)
             break

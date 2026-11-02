@@ -98,14 +98,16 @@ class _AddExpensePageState extends State<AddExpensePage> {
       _error = null;
     });
     try {
-      final res = await http.post(
-        Uri.parse('$baseUrl/ai/categorize'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${widget.token}',
-        },
-        body: jsonEncode({'text': text}),
-      );
+      final res = await http
+          .post(
+            Uri.parse('$baseUrl/ai/categorize'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${widget.token}',
+            },
+            body: jsonEncode({'text': text}),
+          )
+          .timeout(const Duration(seconds: 30));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         setState(() {
