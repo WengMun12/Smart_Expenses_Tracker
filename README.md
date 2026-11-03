@@ -3,9 +3,9 @@
 A mobile app for tracking personal expenses, with AI-powered auto-fill. Type something and the app fills in the amount, description and category for you.
 
 ## Screenshots
-| Login | Expenses | Add with AI |
-|---|---|---|
-| <img width="367" height="805" alt="image" src="https://github.com/user-attachments/assets/b0aaf613-3304-471f-8f81-9e46893cb6c5" /> | <img width="381" height="795" alt="image" src="https://github.com/user-attachments/assets/2e80f7d7-3371-48f2-bcfb-a6b1a3a1800e" /> | <img width="378" height="796" alt="image" src="https://github.com/user-attachments/assets/6fdc7d00-327d-4b03-8629-c1f20fb34db5" /> |
+| Login | Sign up | Expenses | Add with AI |
+|---|---|---|---|
+| <img width="376" height="805" alt="image" src="https://github.com/user-attachments/assets/9563ea05-d717-4b80-aece-eef346339d50" /> | <img width="382" height="797" alt="image" src="https://github.com/user-attachments/assets/566d76c8-aa04-4610-9ac1-d9a7bb77b188" /> | <img width="381" height="795" alt="image" src="https://github.com/user-attachments/assets/2e80f7d7-3371-48f2-bcfb-a6b1a3a1800e" /> | <img width="378" height="796" alt="image" src="https://github.com/user-attachments/assets/6fdc7d00-327d-4b03-8629-c1f20fb34db5" /> |
 
 ## Features 
 - User sign up ang log in (JWT Authentication, bycrpt password hashing)
@@ -44,7 +44,6 @@ Flutter app -> FastAPI REST API -> MySQL
 Three tables: 'users', 'category', 'expenses'
 
 ## Future Improvements
-- Sign-up screen in the app
 - Edit expenses
 - Monthly totals and charts
 - Persist login with secure storage
