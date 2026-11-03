@@ -91,7 +91,11 @@ def add_expenses(e: ExpenseIn, user_id: int = Depends(get_current_user)):
 def list_expenses(user_id: int = Depends(get_current_user)):
     with engine.connect() as conn:
         rows = conn.execute(
-            text("SELECT * FROM expenses WHERE userID = :u ORDER BY sdate DESC"),
+            text("""SELECT e.*, c.categoryName
+                    FROM expenses e
+                    LEFT JOIN category c ON e.categoryID = c.categoryID
+                    WHERE e.userID = :u
+                    ORDER BY e.sdate DESC"""),
             {"u": user_id},
         ).mappings().all()
     return jsonable_encoder([dict(r) for r in rows])

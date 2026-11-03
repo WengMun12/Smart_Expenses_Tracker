@@ -67,6 +67,21 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  IconData _categoryIcon(String? name) {
+    switch (name) {
+      case 'Food':
+        return Icons.restaurant;
+      case 'Transport':
+        return Icons.directions_car;
+      case 'Shopping':
+        return Icons.shopping_bag;
+      case 'Savings':
+        return Icons.savings;
+      default:
+        return Icons.category;
+    }
+  }
+
   Widget _buildBody() {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return Center(child: Text(_error!));
@@ -114,8 +129,11 @@ class _HomePageState extends State<HomePage> {
               _deleteExpense(id);
             },
             child: ListTile(
-              title: Text(e['description'] ?? '(no description'),
-              subtitle: Text('${e['sdate']}'),
+              leading: CircleAvatar(
+                child: Icon(_categoryIcon(e['categoryName'])),
+              ),
+              title: Text(e['description'] ?? '(no description)'),
+              subtitle: Text('${e['categoryName'] ?? 'Uncategorized'} • ${e['sdate']}'),
               trailing: Text('RM ${e['amount']}'),
             ),
           );
