@@ -4,11 +4,13 @@ from sqlalchemy import create_engine, text
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import UploadFile, File
 from datetime import date
 from typing import Optional
 from dotenv import load_dotenv
 from fastapi.encoders import jsonable_encoder
 from google import genai
+from google.genai import types
 import json
 import jwt
 import bcrypt
@@ -119,34 +121,52 @@ def delete_expense(expense_id: int, user_id: int = Depends(get_current_user)):
 class AIIn(BaseModel):
     text: str
 
-@app.post("/ai/categorize")
-def ai_category(body: AIIn, user_id: int = Depends(get_current_user)):
-    prompt = (
-        "Extract expense details from this text: " + body.text + "\n"
-        "Reply with ONLY JSON, no extra words, in this form: "
-        '{"amount": number, "description": "short text", "category": "Food|Transport|Shopping|Bills|Savings|Others"}'
-    )
-    last_error = None
-    for attempt in range(3):
+JSON_FORMAT = (
+    "Reply with ONLY JSON, no extra words, in this form: " 
+    '{"amount": number, "description": "short text", "category": "Food|Transport|Shopping|Bills|Savings|Others"}'
+)
+
+def run_ai(contents):
+    data = None
+    for attempt in range(4):
         model = MODELS[attempt % len(MODELS)]
-        try:
-            res = gemini.models.generate_content(model=model, contents=prompt)
-            clean = res.text.replace("'''json", "").replace("'''", "").strip()
+        try: 
+            res = gemini.models.generate_content(model=model, contents=contents)
+            clean = res.text.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean)
             break
         except Exception as ex:
-            last_error = exec
-            print("AI ERROR:", repr(ex))
-            time.sleep(2)
-    else:
+            print("AI ERROR:", model, repr(ex))
+            time.sleep(3)
+    if data is None:
         raise HTTPException(502, "AI is busy, please try again")
 
     with engine.connect() as conn:
         row = conn.execute(
-            text("SELECT categoryID FROM category WHERE categoryName = :n"), {"n": data.get("category")},
+            text("SELECT categoryID FROM category WHERE categoryName = :n"),
+            {"n": data.get("category")},
         ).fetchone()
     data["categoryID"] = row.categoryID if row else None
     return data
+
+@app.post("/ai/categorize")
+def ai_category(body: AIIn, user_id: int = Depends(get_current_user)):
+    prompt = "Extract expense details from this text: " + body.text + "\n" + JSON_FORMAT
+    return run_ai(prompt)
+
+@app.post("/ai/receipt")
+def ai_receipt(file: UploadFile = File(...), user_id: int = Depends(get_current_user)):
+    image_bytes = file.file.read()
+    print("RECEIPT:", file.content_type, len(image_bytes), "bytes")
+    if len(image_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(413, "Image too large (max 5MB)")
+    mime = file.content_type if (file.content_type or "").startswith("image/") else "image/jpeg"
+    part = types.Part.from_bytes(data=image_bytes, mime_type=mime)
+    prompt = (
+        "This is a receipt. Extract the total amount paid, use the store name as the description and pick the best category."
+        "If you cannot read it, set amount to 0.\n" + JSON_FORMAT
+    )
+    return run_ai([part, prompt])
 
 @app.get("/category")
 def list_category():

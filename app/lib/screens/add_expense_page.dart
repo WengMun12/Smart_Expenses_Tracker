@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 
 import '../config.dart';
 
+import 'package:image_picker/image_picker.dart';
+
 class AddExpensePage extends StatefulWidget {
   final String token;
   const AddExpensePage({super.key, required this.token});
@@ -17,6 +19,8 @@ class _AddExpensePageState extends State<AddExpensePage> {
   final _amount = TextEditingController();
   final _description = TextEditingController();
   final _aiText = TextEditingController();
+  final _picker = ImagePicker();
+  bool _scanning = false;
   bool _aiLoading = false;
   DateTime _date = DateTime.now();
   List<dynamic> _category = [];
@@ -124,6 +128,42 @@ class _AddExpensePageState extends State<AddExpensePage> {
     if (mounted) setState(() => _aiLoading = false);
   }
 
+  Future<void> _scanReceipt(ImageSource source) async {
+    final picked = await _picker.pickImage(
+      source: source,
+      maxWidth: 2400,
+      imageQuality: 95,
+    );
+    if (picked == null) return;
+    setState(() {
+      _scanning = true;
+      _error = null;
+    });
+    try {
+      final req = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/ai/receipt'),
+      );
+      req.headers['Authorization'] = 'Bearer ${widget.token}';
+      req.files.add(await http.MultipartFile.fromPath('file', picked.path));
+      final streamed = await req.send().timeout(const Duration(seconds: 60));
+      final res = await http.Response.fromStream(streamed);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        setState(() {
+          _amount.text = '${data['amount'] ?? ''}';
+          _description.text = data['description'] ?? '';
+          _categoryId = data['categoryID'];
+        });
+      } else {
+        setState(() => _error = 'Could not read receipt (${res.statusCode}');
+      }
+    } catch (e) {
+      setState(() => _error = 'Error: $e');
+    }
+    if (mounted) setState(() => _scanning = false);
+  }
+
   @override
   void dispose() {
     _amount.dispose();
@@ -146,6 +186,35 @@ class _AddExpensePageState extends State<AddExpensePage> {
               prefixIcon: Icon(Icons.auto_awesome),
             ),
           ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _scanning
+                      ? null
+                      : () => _scanReceipt(ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library),
+                  label: const Text('Receipt (gallery'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _scanning
+                      ? null
+                      : () => _scanReceipt(ImageSource.camera),
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('Receipt (camera)'),
+                ),
+              ),
+            ],
+          ),
+          if (_scanning)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: LinearProgressIndicator(),
+            ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: _aiLoading ? null : _autoFill,
