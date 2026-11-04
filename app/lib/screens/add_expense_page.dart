@@ -9,7 +9,8 @@ import 'package:image_picker/image_picker.dart';
 
 class AddExpensePage extends StatefulWidget {
   final String token;
-  const AddExpensePage({super.key, required this.token});
+  final Map<String, dynamic>? expense;
+  const AddExpensePage({super.key, required this.token, this.expense});
 
   @override
   State<AddExpensePage> createState() => _AddExpensePageState();
@@ -32,6 +33,13 @@ class _AddExpensePageState extends State<AddExpensePage> {
   void initState() {
     super.initState();
     _loadCategory();
+    final e = widget.expense;
+    if (e != null) {
+      _amount.text = '${e['amount']}';
+      _description.text = e['description'] ?? '';
+      _categoryId = e['categoryID'];
+      _date = DateTime.parse('${e['sdate']}');
+    }
   }
 
   Future<void> _loadCategory() async {
@@ -69,19 +77,23 @@ class _AddExpensePageState extends State<AddExpensePage> {
       _error = null;
     });
     try {
-      final res = await http.post(
-        Uri.parse('$baseUrl/expenses'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${widget.token}',
-        },
-        body: jsonEncode({
-          'amount': amount,
-          'description': _description.text.trim(),
-          'date': _dateText,
-          'categoryID': _categoryId,
-        }),
-      );
+      final isEdit = widget.expense != null;
+      final uri = isEdit
+          ? Uri.parse('$baseUrl/expenses/${widget.expense!['expensesID']}')
+          : Uri.parse('$baseUrl/expenses');
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${widget.token}',
+      };
+      final body = jsonEncode({
+        'amount': amount,
+        'description': _description.text.trim(),
+        'date': _dateText,
+        'categoryID': _categoryId,
+      });
+      final res = isEdit
+          ? await http.put(uri, headers: headers, body: body)
+          : await http.post(uri, headers: headers, body: body);
       if (res.statusCode == 200) {
         if (!mounted) return;
         Navigator.pop(context, true);
@@ -175,7 +187,9 @@ class _AddExpensePageState extends State<AddExpensePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Expense')),
+      appBar: AppBar(
+        title: Text(widget.expense == null ? 'Add Expense' : 'Edit Expense'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [

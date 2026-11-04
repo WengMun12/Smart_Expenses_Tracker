@@ -129,10 +129,17 @@ class _HomePageState extends State<HomePage> {
               _deleteExpense(id);
             },
             child: ListTile(
-              leading: CircleAvatar(
-                child: Icon(_categoryIcon(e['categoryName'])),
-              ),
-              title: Text(e['description'] ?? '(no description)'),
+              onTap: () async {
+                final changed = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddExpensePage(token: widget.token, expense: e),
+                  ),
+                );
+                if (changed == true) _loadExpenses();
+              },
+              leading: CircleAvatar(child: Icon(_categoryIcon(e['categoryName']))),
+              title: Text(e['description'] ?? '(no desciption)'),
               subtitle: Text('${e['categoryName'] ?? 'Uncategorized'} • ${e['sdate']}'),
               trailing: Text('RM ${e['amount']}'),
             ),
