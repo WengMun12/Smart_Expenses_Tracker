@@ -177,3 +177,31 @@ def list_category():
     with engine.connect() as conn:
         rows = conn.execute(text("SELECT * FROM category")).mappings().all()
     return [dict(r) for r in rows]
+
+@app.get("/summary")
+def summary(month: Optional[str] = None, user_id: int = Depends(get_current_user)):
+    if month is None:
+        month = date.today().strftime("%Y-%m")
+    try:
+        start = date.fromisoformat(month + "-01")
+    except ValueError:
+        raise HTTPException(400, "Month must look like 2026-11")
+    end = date(start.year + start.month // 12, start.month % 12 + 1, 1)
+
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""SELECT COALESCE(c.categoryName, 'Uncategorized') AS category, SUM(e.amount) AS total
+                    FROM expenses e
+                    LEFT JOIN category c ON e.categoryID = c.categoryID
+                    WHERE e.userID = :u AND e.sdate >= :s AND e.sdate < :e
+                    GROUP BY category
+                    ORDER BY total DESC"""),
+            {"u": user_id, "s": start, "e": end},
+        ).mappings().all()
+
+    by_category = [{"category": r["category"], "total": float(r["total"])} for r in rows]
+    return {
+        "month": month,
+        "total": round(sum(x["total"] for x in by_category), 2),
+        "by_category": by_category,
+    }

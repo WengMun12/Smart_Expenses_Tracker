@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../../config.dart';
 import 'add_expense_page.dart';
+import 'summary_page.dart';
 
 class HomePage extends StatefulWidget {
   final String token;
@@ -82,77 +83,119 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  double get _monthTotal {
+    final now = DateTime.now();
+    final prefix = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    double sum = 0;
+    for (final e in _expenses) {
+      if ('${e['sdate']}'.startsWith(prefix)) {
+        sum += double.tryParse('${e['amount']}') ?? 0;
+      }
+    }
+    return sum;
+  }
+
   Widget _buildBody() {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return Center(child: Text(_error!));
     if (_expenses.isEmpty) return const Center(child: Text('No expenses yet'));
 
-    return RefreshIndicator(
-      onRefresh: _loadExpenses,
-      child: ListView.builder(
-        itemCount: _expenses.length,
-        itemBuilder: (context, i) {
-          final e = _expenses[i];
-          return Dismissible(
-            key: ValueKey(e['expensesID']),
-            direction: DismissDirection.endToStart,
-            confirmDismiss: (direction) async {
-              return await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Delete expense?'),
-                  content: Text(
-                    'Delete "${e['description'] ?? 'this expense'}" (RM ${e['amount']})?',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Delete', style: TextStyle(color: Colors.red),),
-                    ),
-                  ],
-                ),
-              );
-            },
-            background: Container(
-              color: Colors.red,
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 20),
-              child: const Icon(Icons.delete, color: Colors.white),
+    return Column(
+      children: [
+        Card(
+          margin: const EdgeInsets.all(12),
+          child: ListTile(
+            leading: const Icon(Icons.calendar_month),
+            title: const Text('This month'),
+            trailing: Text(
+              'RM ${_monthTotal.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            onDismissed: (_) {
-              final id = e['expensesID'];
-              setState(() => _expenses.removeAt(i));
-              _deleteExpense(id);
-            },
-            child: ListTile(
-              onTap: () async {
-                final changed = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AddExpensePage(token: widget.token, expense: e),
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _loadExpenses,
+            child: ListView.builder(
+              itemCount: _expenses.length,
+              itemBuilder: (context, i) {
+                final e = _expenses[i];
+                return Dismissible(
+                  key: ValueKey(e['expensesID']),
+                  direction: DismissDirection.endToStart,
+                  confirmDismiss: (direction) async {
+                    return await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Delete expense?'),
+                        content: Text(
+                          'Delete "${e['description'] ?? 'this expense'}" (RM ${e['amount']})?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Delete', style: TextStyle(color: Colors.red),),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  onDismissed: (_) {
+                    final id = e['expensesID'];
+                    setState(() => _expenses.removeAt(i));
+                    _deleteExpense(id);
+                  },
+                  child: ListTile(
+                    onTap: () async {
+                      final changed = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AddExpensePage(token: widget.token, expense: e),
+                        ),
+                      );
+                      if (changed == true) _loadExpenses();
+                    },
+                    leading: CircleAvatar(child: Icon(_categoryIcon(e['categoryName']))),
+                    title: Text(e['description'] ?? '(no desciption)'),
+                    subtitle: Text('${e['categoryName'] ?? 'Uncategorized'} • ${e['sdate']}'),
+                    trailing: Text('RM ${e['amount']}'),
                   ),
                 );
-                if (changed == true) _loadExpenses();
               },
-              leading: CircleAvatar(child: Icon(_categoryIcon(e['categoryName']))),
-              title: Text(e['description'] ?? '(no desciption)'),
-              subtitle: Text('${e['categoryName'] ?? 'Uncategorized'} • ${e['sdate']}'),
-              trailing: Text('RM ${e['amount']}'),
             ),
-          );
-        },
-      ),
+          )
+        )
+      ]
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('My Expenses')),
+      appBar: AppBar(
+        title: const Text('My Expenses'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.pie_chart),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SummaryPage(token: widget.token),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: _buildBody(),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
