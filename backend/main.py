@@ -16,8 +16,11 @@ import jwt
 import bcrypt
 import os
 import time
+import ssl
 
-engine = create_engine("mysql+pymysql://root:@localhost/expense_tracker")
+DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:@Localhost/expense_tracker")
+connect_args = {"ssl": ssl.create_default_context()} if os.getenv("DB_SSL") == "true" else {}
+engine = create_engine(DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
 app = FastAPI()
 
 class UserIn(BaseModel):
