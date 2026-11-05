@@ -175,14 +175,54 @@ def ai_receipt(file: UploadFile = File(...), user_id: int = Depends(get_current_
     )
     return run_ai([part, prompt])
 
+@app.post("/ai/tips")
+def ai_tips(month: Optional[str] = None, user_id: int = Depends(get_current_user)):
+    current = build_summary(user_id, month)
+    if not current["by_category"]:
+        raise HTTPException(400, "No expenses this month")
+
+    y, m = map(int, current["month"].split("-"))
+    prev_month = f"{y - 1}-12" if m == 1 else f"{y}-{m - 1:02d}"
+    previous = build_summary(user_id, prev_month)
+
+    prompt =(
+        "You are a friendly personal finance coach for a student. Currency is RM.\n"
+        f"This month's spending: {json.dumps(current)}\n"
+        f"Last month's total: {previous['total']}\n"
+        "Give exactly 3 short, specifc practical tips to save money, based on the biggest categories and any increase from last month."
+        "Each tip must be under 25 words."
+        "Reply with ONLY a JSON array of 3 strings, no extra words."
+    )
+
+    tips = None
+    for attempt in range(4):
+        model = MODELS[attempt % len(MODELS)]
+        try: 
+            res =gemini.models.generate_content(model=model, contents=prompt, config=types.GenerateContentConfig(max_output_tokens=500))
+            raw = res.text
+            print("TIPS RAW:", model, repr(raw))
+            clean = raw.replace("```json", "").replace("```", "").strip()
+            data = json.loads(clean)
+            if isinstance(data, dict):
+                data = next((v for v in data.values() if isinstance(v, list)), [])
+            if isinstance(data, list) and data:
+                tips = [str(t) for t in data[:3]]
+                break
+            print("TIPS BAD SHAPE:", data)
+        except Exception as ex:
+            print("AI ERROR:", model, repr(ex))
+            time.sleep(3)
+    if tips is None:
+        raise HTTPException(502, "AI is busy, please try again")
+    return {"month": current["month"], "tips": tips}
+
 @app.get("/category")
 def list_category():
     with engine.connect() as conn:
         rows = conn.execute(text("SELECT * FROM category")).mappings().all()
     return [dict(r) for r in rows]
 
-@app.get("/summary")
-def summary(month: Optional[str] = None, user_id: int = Depends(get_current_user)):
+def build_summary(user_id: int, month: Optional[str] = None):
     if month is None:
         month = date.today().strftime("%Y-%m")
     try:
@@ -208,3 +248,7 @@ def summary(month: Optional[str] = None, user_id: int = Depends(get_current_user
         "total": round(sum(x["total"] for x in by_category), 2),
         "by_category": by_category,
     }
+
+@app.get("/summary")
+def summary(month: Optional[str] = None, user_id: int = Depends(get_current_user)):
+    return build_summary(user_id, month)
