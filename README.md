@@ -7,6 +7,9 @@ A mobile app for tracking personal expenses, with AI-powered entry. Type somethi
 |---|---|---|---|---|---|
 | <img width="390" height="842" alt="image" src="https://github.com/user-attachments/assets/ddcde45f-809d-48d2-920a-6a242e9647fa" /> | <img width="385" height="840" alt="image" src="https://github.com/user-attachments/assets/3de4d5be-2194-4bb7-befc-486d9d2d91eb" /> | <img width="381" height="835" alt="image" src="https://github.com/user-attachments/assets/1b901764-30ce-4564-9667-4b4842b0ee18" /> | <img width="393" height="847" alt="image" src="https://github.com/user-attachments/assets/f6427289-c4aa-452e-9775-062d3ed00e5f" /> | <img width="387" height="843" alt="image" src="https://github.com/user-attachments/assets/3e4ec4ec-2b8d-4ec7-8600-cf30c7deecfd" /> | <img width="381" height="837" alt="image" src="https://github.com/user-attachments/assets/381d3701-2968-48a3-a8a1-50cc1820ef74" /> |
 
+## Demo link
+https://youtube.com/shorts/99Gz3YyjCJU?feature=share
+
 ## Features 
 - User sign up ang log in with JWT Authentication, bycrpt password hashing
 - Persistent login: user stays sign in between app launches
