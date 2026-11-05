@@ -18,6 +18,9 @@ class _SummaryPageState extends State<SummaryPage> {
   List<dynamic> _items = [];
   bool _loading = true;
   String? _error;
+  List<String> _tips = [];
+  bool _tipsLoading = false;
+  String? _tipsError;
 
   static const _colors = [
     Colors.deepPurple, Colors.orange, Colors.teal,
@@ -56,8 +59,33 @@ class _SummaryPageState extends State<SummaryPage> {
     if (mounted) setState(() => _loading = false);
   }
 
+  Future<void> _getTips() async {
+    setState(() {
+      _tipsLoading = true;
+      _tipsError = null;
+    });
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/ai/tips?months=$_monthText'),
+        headers: {'Authorization': 'Bearer ${widget.token}'},
+      ).timeout(const Duration(seconds: 60));
+      if (res.statusCode == 200) {
+        _tips = List<String>.from(jsonDecode(res.body)['tips']);
+      } else {
+        _tipsError = 'AI is busy right now. Please try again in a minute.';
+      }
+    } catch (e) {
+      _tipsError = 'Error: $e';
+    }
+    if (mounted) setState(() => _tipsLoading = false);
+  }
+
   void _changeMonth(int delta) {
-    setState(() => _month = DateTime(_month.year, _month.month + delta));
+    setState(() {
+      _month = DateTime(_month.year, _month.month + delta);
+      _tips = [];
+      _tipsError = null;
+    });
     _load();
   }
 
@@ -128,6 +156,53 @@ class _SummaryPageState extends State<SummaryPage> {
             title: Text(_items[i]['category']),
             trailing: Text(
               'RM ${(_items[i]['total'] as num).toStringAsFixed(2)}'),
+          ),
+        const Divider(height: 32),
+        OutlinedButton.icon(
+            onPressed: _tipsLoading ? null : _getTips,
+            icon: _tipsLoading
+                ? const SizedBox(
+                   height: 16,
+                   width: 16,
+                   child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.auto_awesome),
+            label: const Text('Get AI saving tips')
+        ),
+        if (_tipsError != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(_tipsError!, style: const TextStyle(color: Colors.red)),
+          ),
+        if (_tips.isNotEmpty)
+          Card(
+            margin: const EdgeInsets.only(top: 12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Saving tips', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  for (final t in _tips)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.lightbulb_outline, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(t)),
+                        ],
+                      ),
+                    ),
+                  const Text(
+                    'AI-generated suggestions, not financial advice.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
           ),
       ],
     );
