@@ -2,10 +2,12 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config.dart';
 import 'add_expense_page.dart';
 import 'summary_page.dart';
+import 'login_page.dart';
 
 class HomePage extends StatefulWidget {
   final String token;
@@ -26,6 +28,17 @@ class _HomePageState extends State<HomePage> {
     _loadExpenses();
   }
 
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+        (route) => false,
+    );
+  }
+
   Future<void> _loadExpenses() async {
     setState(() {
       _loading = true;
@@ -39,6 +52,10 @@ class _HomePageState extends State<HomePage> {
       if (res.statusCode == 200) {
         _expenses = jsonDecode(res.body);
       } else {
+        if (res.statusCode == 401) {
+          await _logout();
+          return;
+        }
         _error = 'Failed to load (${res.statusCode})';
       }
     } catch (e) {
@@ -194,6 +211,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
+          IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
         ],
       ),
       body: _buildBody(),

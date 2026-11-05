@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../../config.dart';
 import 'home_page.dart';
 import 'signup_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -34,6 +35,8 @@ class _LoginPageState extends State<LoginPage> {
       );
       if (res.statusCode == 200) {
         final token = jsonDecode(res.body)['access_token'];
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', token);
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
